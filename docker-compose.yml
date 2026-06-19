@@ -1,0 +1,92 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: exam_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - APP_ENV=local
+      - QUEUE_CONNECTION=database
+    depends_on:
+      - db
+    networks:
+      - exam_net
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: exam_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - exam_net
+
+  db:
+    image: mysql:8.0
+    container_name: exam_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: online_examination_system
+      MYSQL_USER: exam_user
+      MYSQL_PASSWORD: exam_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - exam_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: exam_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    networks:
+      - exam_net
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: exam_mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - exam_net
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: exam_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    command: php artisan queue:listen --tries=3 --timeout=120
+    depends_on:
+      - db
+      - app
+    networks:
+      - exam_net
+
+volumes:
+  db_data:
+
+networks:
+  exam_net:
+    driver: bridge
