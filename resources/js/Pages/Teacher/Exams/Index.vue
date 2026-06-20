@@ -257,6 +257,17 @@ const totalCount = computed(() => props.exams.total ?? props.exams.data.length)
               </svg>
             </Link>
 
+            <!-- Edit icon btn -->
+            <Link
+              :href="`/teacher/exams/${exam.id}/edit`"
+              class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              title="Edit exam"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+              </svg>
+            </Link>
+
             <!-- Delete icon btn -->
             <button
               type="button"

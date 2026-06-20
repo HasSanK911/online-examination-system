@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SerializesDatesInAppTimezone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Result extends Model
 {
-    use HasFactory;
+    use HasFactory, SerializesDatesInAppTimezone;
 
     protected $fillable = [
         'attempt_id', 'student_id', 'exam_id',

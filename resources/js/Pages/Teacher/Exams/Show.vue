@@ -374,7 +374,7 @@
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Created By</p>
-                <p class="text-sm font-medium text-slate-900">{{ exam.creator.name }}</p>
+                <p class="text-sm font-medium text-slate-900">{{ exam.creator?.name ?? '—' }}</p>
               </div>
             </div>
 

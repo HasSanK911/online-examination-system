@@ -87,12 +87,16 @@ class StudentController extends Controller
 
         DB::transaction(function () use ($data) {
             $user = User::create([
-                'name'              => $data['name'],
-                'email'             => $data['email'],
-                'password'          => Hash::make('password'),
-                'email_verified_at' => now(),
-                'is_active'         => true,
+                'name'      => $data['name'],
+                'email'     => $data['email'],
+                'password'  => Hash::make('password'),
+                'is_active' => true,
             ]);
+
+            // Admin-created students skip email verification — they can log in immediately.
+            // (email_verified_at is not in $fillable, so it must be set explicitly.)
+            $user->markEmailAsVerified();
+
             $user->assignRole('student');
 
             Student::create([

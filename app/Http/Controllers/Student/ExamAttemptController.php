@@ -28,9 +28,7 @@ class ExamAttemptController extends Controller
             ->get();
 
         $activeExams = Exam::whereIn('course_id', $courseIds)
-            ->where('status', 'active')
-            ->whereBetween('start_time', [$now->clone()->subHours(1), $now])
-            ->where('end_time', '>', $now)
+            ->live()
             ->with('course')
             ->get();
 
@@ -50,6 +48,15 @@ class ExamAttemptController extends Controller
         $student = Auth::user()->student;
 
         abort_if(! $exam->isLive(), 403, 'This exam is not currently active.');
+
+        if ($exam->questions()->count() === 0) {
+            return back()->with('error', 'This exam has no questions yet. Please contact your teacher.');
+        }
+
+        // Reflect that the exam is now running (no scheduler flips this for us).
+        if ($exam->status === 'scheduled') {
+            $exam->update(['status' => 'active']);
+        }
 
         $attempt = $this->attemptService->startAttempt($exam, $student);
         $exam->load(['questions.options' => fn($q) => $q->orderBy('order')]);

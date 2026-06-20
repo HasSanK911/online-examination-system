@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Carbon;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // Serialize model dates in the app timezone (Asia/Karachi) with offset,
+        // so the frontend shows/edits times in Pakistan time instead of UTC.
+        Carbon::serializeUsing(fn (Carbon $date) => $date->format('Y-m-d\TH:i:sP'));
 
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)->by($request->input('email') . '|' . $request->ip());

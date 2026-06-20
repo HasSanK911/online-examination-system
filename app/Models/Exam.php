@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SerializesDatesInAppTimezone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Support\LogOptions;
 
 class Exam extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, SoftDeletes, LogsActivity, SerializesDatesInAppTimezone;
 
     protected $fillable = [
         'course_id', 'created_by', 'title', 'description', 'instructions',
@@ -70,13 +71,22 @@ class Exam extends Model
 
     public function isLive(): bool
     {
-        return $this->status === 'active'
+        // Attemptable while inside the scheduled window. We don't depend on a
+        // background job flipping 'scheduled' → 'active', so both count as live.
+        return in_array($this->status, ['scheduled', 'active'], true)
             && now()->between($this->start_time, $this->end_time);
     }
 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeLive($query)
+    {
+        return $query->whereIn('status', ['scheduled', 'active'])
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>', now());
     }
 
     public function scopeUpcoming($query)

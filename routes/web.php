@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\FacultyController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\StudentController;
+use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\Admin\ExamManagementController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuditLogController;
@@ -85,6 +86,13 @@ Route::middleware(['auth', 'verified', 'role:super_admin'])
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::post('/courses/{course}/teachers', [CourseController::class, 'assignTeacher'])->name('courses.teachers.assign');
         Route::delete('/courses/{course}/teachers/{user}', [CourseController::class, 'removeTeacher'])->name('courses.teachers.remove');
+        Route::post('/courses/{course}/students', [CourseController::class, 'syncStudents'])->name('courses.students.sync');
+
+        // Teachers
+        Route::get('/teachers', [TeacherController::class, 'index'])->name('teachers.index');
+        Route::post('/teachers', [TeacherController::class, 'store'])->name('teachers.store');
+        Route::put('/teachers/{teacher}', [TeacherController::class, 'update'])->name('teachers.update');
+        Route::delete('/teachers/{teacher}', [TeacherController::class, 'destroy'])->name('teachers.destroy');
 
         // Students
         Route::get('/students', [StudentController::class, 'index'])->name('students.index');

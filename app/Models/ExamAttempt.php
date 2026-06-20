@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SerializesDatesInAppTimezone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ExamAttempt extends Model
 {
-    use HasFactory;
+    use HasFactory, SerializesDatesInAppTimezone;
 
     protected $fillable = [
         'exam_id', 'student_id', 'started_at', 'submitted_at',

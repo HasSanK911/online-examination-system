@@ -24,13 +24,24 @@ class ExamAttemptService
             ->first();
 
         if ($existing) {
+            // Heal an attempt that was started before the exam had questions
+            // (otherwise the student is stuck on an empty paper forever).
+            if (empty($existing->question_order)) {
+                $order = $this->buildQuestionOrder($exam);
+                $existing->update(['question_order' => $order]);
+
+                foreach ($order as $questionId) {
+                    AttemptAnswer::firstOrCreate(
+                        ['attempt_id' => $existing->id, 'question_id' => $questionId],
+                        ['is_answered' => false]
+                    );
+                }
+            }
+
             return $existing;
         }
 
-        $questions = $exam->questions;
-        $order     = $exam->shuffle_questions
-            ? $questions->shuffle()->pluck('id')->toArray()
-            : $questions->pluck('id')->toArray();
+        $order = $this->buildQuestionOrder($exam);
 
         $attempt = ExamAttempt::create([
             'exam_id'        => $exam->id,
@@ -53,6 +64,15 @@ class ExamAttemptService
         $this->auditService->log('exam_start', $attempt);
 
         return $attempt;
+    }
+
+    private function buildQuestionOrder(Exam $exam): array
+    {
+        $questions = $exam->questions;
+
+        return $exam->shuffle_questions
+            ? $questions->shuffle()->pluck('id')->toArray()
+            : $questions->pluck('id')->toArray();
     }
 
     public function saveAnswer(ExamAttempt $attempt, int $questionId, array $data): AttemptAnswer

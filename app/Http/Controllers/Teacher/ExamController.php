@@ -71,6 +71,7 @@ class ExamController extends Controller
 
         $exam->load([
             'course.department',
+            'creator',
             'questions' => fn ($q) => $q->withPivot(['order', 'marks'])->orderByPivot('order'),
             'questions.options',
             'attempts.student.user',
@@ -207,6 +208,10 @@ class ExamController extends Controller
             'status' => 'required|in:draft,scheduled,active,completed,cancelled',
         ]);
 
+        if (in_array($request->status, ['scheduled', 'active'], true) && $exam->questions()->count() === 0) {
+            return back()->with('error', 'Add at least one question before scheduling this exam.');
+        }
+
         $exam->update(['status' => $request->status]);
 
         if ($request->status === 'scheduled') {
@@ -222,6 +227,10 @@ class ExamController extends Controller
     public function publish(Exam $exam): RedirectResponse
     {
         abort_unless($exam->created_by === Auth::id(), 403);
+
+        if ($exam->questions()->count() === 0) {
+            return back()->with('error', 'Add at least one question before publishing this exam.');
+        }
 
         $exam->update([
             'status'       => 'scheduled',

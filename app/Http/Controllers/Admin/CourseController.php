@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Department;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ class CourseController extends Controller
 {
     public function index(Request $request): Response
     {
-        $courses = Course::with(['department.faculty'])
+        $courses = Course::with(['department.faculty', 'teachers:id,name,email'])
             ->withCount('students', 'teachers', 'exams')
             ->when($request->search, fn($q, $s) =>
                 $q->where('title', 'like', "%$s%")->orWhere('code', 'like', "%$s%")
@@ -27,11 +28,53 @@ class CourseController extends Controller
 
         $departments = Department::orderBy('name')->get(['id', 'name', 'code']);
 
+        $teachers = User::role('teacher')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
         return Inertia::render('Admin/Courses/Index', [
             'courses'     => $courses,
             'departments' => $departments,
+            'teachers'    => $teachers,
+            // Resolved only when a course is being managed (e.g. partial reload) — null otherwise.
+            'manageStudents' => fn () => $request->manage_course
+                ? $this->manageStudentsData((int) $request->manage_course)
+                : null,
             'filters'     => $request->only('search', 'department_id'),
         ]);
+    }
+
+    /**
+     * Build the enrollment picker payload for a course: every student in the
+     * course's department, flagged with their current enrollment state.
+     */
+    private function manageStudentsData(int $courseId): ?array
+    {
+        $course = Course::find($courseId);
+        if (! $course) {
+            return null;
+        }
+
+        $enrolledIds = $course->students()->pluck('students.id')->map(fn ($id) => (int) $id)->all();
+
+        $students = Student::with('user:id,name')
+            ->where('department_id', $course->department_id)
+            ->orderBy('semester')
+            ->orderBy('student_id')
+            ->get(['id', 'user_id', 'student_id', 'roll_number', 'semester']);
+
+        return [
+            'course_id'    => $course->id,
+            'enrolled_ids' => $enrolledIds,
+            'students'     => $students->map(fn ($s) => [
+                'id'          => $s->id,
+                'student_id'  => $s->student_id,
+                'roll_number' => $s->roll_number,
+                'semester'    => $s->semester,
+                'name'        => $s->user?->name,
+            ]),
+        ];
     }
 
     public function store(Request $request): RedirectResponse
@@ -83,5 +126,28 @@ class CourseController extends Controller
     {
         $course->teachers()->detach($user->id);
         return back()->with('success', 'Teacher removed.');
+    }
+
+    public function syncStudents(Request $request, Course $course): RedirectResponse
+    {
+        $request->validate([
+            'student_ids'   => 'array',
+            'student_ids.*' => 'exists:students,id',
+        ]);
+
+        // Only touch students belonging to this course's department, so we never
+        // disturb any enrollment that lives outside the picker the admin saw.
+        $deptStudentIds = Student::where('department_id', $course->department_id)
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $selected = array_values(array_intersect(
+            array_map('intval', $request->input('student_ids', [])),
+            $deptStudentIds
+        ));
+
+        $course->students()->syncWithoutDetaching($selected);
+        $course->students()->detach(array_diff($deptStudentIds, $selected));
+
+        return back()->with('success', 'Course enrollment updated.');
     }
 }

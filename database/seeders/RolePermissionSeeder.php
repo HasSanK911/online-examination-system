@@ -15,6 +15,8 @@ class RolePermissionSeeder extends Seeder
         $permissions = [
             // Users
             'view users', 'create users', 'edit users', 'delete users',
+            // Teachers
+            'view teachers', 'create teachers', 'edit teachers', 'delete teachers',
             // Faculties
             'view faculties', 'create faculties', 'edit faculties', 'delete faculties',
             // Departments
